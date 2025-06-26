@@ -13,6 +13,8 @@
  * Library headers.
  *-------------------------------------------*/
 #include "raylib/raylib.h"
+#define RAYGUI_IMPLEMENTATION
+#include "raylib/raygui.h"
 //#include "raylib/raymath.h"
 
 /*---------------------------------------------
@@ -36,16 +38,34 @@
  * Custom types (enums, structs, unions, etc.)
  *-------------------------------------------*/
 
-//Definimos a estrutura de um tijolo
+//Estrutura para definir o estado do jogo
+typedef enum GameScreen {
+    MENU,
+    JOGANDO,
+    OPCOES,
+    SAIR
+} GameScreen;
+
+//Estrutura para definir oum tijolo
 typedef struct  Tijolo{
     Rectangle retan; // Retângulo
     Color cor;       // Cor do tijolo 
     bool ativo;      // Ativo ou quebrado
 } Tijolo;
 
+/*---------------------------------------------
+ * Global variables.
+ *-------------------------------------------*/
+
+//O jogo começa na tela menu
+GameScreen currentScreen = MENU;
+
 //Declaração de um array 2d do tipo Tijolo, que representa uma grade de tijolos.
 Tijolo tijolos[LINHAS_TIJOLOS][COLUNAS_TIJOLOS];
 
+/*---------------------------------------------
+ * Function prototypes. 
+ *-------------------------------------------*/
 
 void update( float delta );
 
@@ -53,6 +73,8 @@ void draw( void );
 
 void inicializarTijolos();
 void desenharTijolos();
+void menuPrincipal();
+void menuOpcoes();
 
 int main( void ) {
 
@@ -99,7 +121,22 @@ void draw( void ) {
     BeginDrawing();
     ClearBackground( BLACK );
 
-    desenharTijolos();
+    //Switch responsavel por mudar as telas
+    switch (currentScreen) {
+        case MENU:
+            menuPrincipal();
+            break;
+        case JOGANDO:
+            desenharTijolos();
+            break;
+        case OPCOES:
+            menuOpcoes();
+            break;
+        case SAIR:
+            CloseWindow();
+            break;
+    }
+    
 
     EndDrawing();
 
@@ -163,4 +200,45 @@ void desenharTijolos(){
             }
         }
     }
+}
+
+void menuPrincipal(){
+    
+    int larguraTela = GetScreenWidth();
+    int alturaTela = GetScreenHeight();
+
+    int botaoLargura = 300;
+    int botaoAltura = 60;
+
+    int x = larguraTela / 2 - botaoLargura / 2;
+    int y = alturaTela / 2;
+    int espaco = 20;
+
+    const char* titulo = "BREAKOUT";
+    int fonteTitulo = 70;
+    int tituloX = larguraTela / 2 - MeasureText(titulo, fonteTitulo) / 2;
+    int tituloY = y - 160 - espaco;
+
+    DrawText(titulo, tituloX + 3, tituloY + 3, fonteTitulo, GRAY);
+    DrawText(titulo, tituloX, tituloY, fonteTitulo, RAYWHITE);
+
+    if (GuiButton((Rectangle){ x, y - botaoAltura - espaco, botaoLargura, botaoAltura }, "JOGAR")) {
+        currentScreen = JOGANDO;
+    }
+
+    if (GuiButton((Rectangle){ x, y, botaoLargura, botaoAltura }, "OPÇÕES")) {
+        currentScreen = OPCOES;
+    }
+
+    if (GuiButton((Rectangle){ x, y + botaoAltura + espaco, botaoLargura, botaoAltura }, "SAIR")) {
+        currentScreen = SAIR;
+    }
+
+}
+
+void menuOpcoes(){
+    int larguraTela = GetScreenWidth();
+    int alturaTela = GetScreenHeight();
+
+    DrawText("Em construcao", larguraTela / 2, alturaTela / 2, 40, WHITE);
 }
