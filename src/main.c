@@ -33,7 +33,8 @@
 /*--------------------------------------------
  * Constants. 
  *------------------------------------------*/
-
+    const int PARADO = 0;
+    const int RODANDO = 1;
 /*---------------------------------------------
  * Custom types (enums, structs, unions, etc.)
  *-------------------------------------------*/
@@ -53,15 +54,35 @@
         bool ativo;      // Ativo ou quebrado
     } Tijolo;
 
+    typedef struct Bolinha {
+        Vector2 pos;
+        Vector2 vel;
+        float raio;
+        Color cor;
+    } Bolinha;
+
+    typedef struct Jogador {
+        Vector2 pos;
+        Vector2 dim;
+        float vel;
+        int pontos;
+        Color cor;
+    } Jogador;
+
+
 /*---------------------------------------------
  * Global variables.
  *-------------------------------------------*/
 
     //O jogo começa na tela menu
-    GameScreen currentScreen = MENU;
+    GameScreen currentScreen = JOGANDO;
 
     //Declaração de um array 2d do tipo Tijolo, que representa uma grade de tijolos.
     Tijolo tijolos[LINHAS_TIJOLOS][COLUNAS_TIJOLOS];
+
+    Jogador jogador;
+    Bolinha bolinha;
+    int estado = PARADO;
 
     int volumeMusica = 70;
     int volumeEfeitos = 80;
@@ -69,8 +90,8 @@
     bool efeitosAtivos = true;
     bool fullscreen = false;
 
-    int teclaEsquerda = KEY_LEFT; 
-    int teclaDireita = KEY_RIGHT; 
+    int teclaEsquerda = KEY_A; 
+    int teclaDireita = KEY_D; 
 
     const int resolucoes[4][2] = {
         {800, 600},
@@ -91,8 +112,16 @@
 
     void inicializarTijolos();
     void desenharTijolos();
+
     void menuPrincipal();
     void menuOpcoes();
+
+    void atualizarJogador( Jogador *jogador, int teclaEsquerda, int teclaDireita, float delta );
+    void desenharJogador( Jogador *jogador );
+    void resolverColisao( Bolinha *b, Jogador *j);
+
+    void atualizarBolinha( Bolinha *bolinha, float delta );
+    void desenharBolinha( Bolinha *bolinha );
 
     int main( void ) {
 
@@ -112,6 +141,33 @@
         // you must load game resources here
         inicializarTijolos();
 
+        jogador = (Jogador) {
+            .pos = {
+                .x = GetScreenWidth() / 2 - 75,
+                .y = GetScreenHeight() - 75
+            },
+            .dim = {
+                .x = 150,
+                .y = 30
+            },
+            .vel = 200,
+            .pontos = 0,
+            .cor = WHITE
+        };
+
+        bolinha = (Bolinha) {
+            .pos = {
+                .x = GetScreenWidth() / 2,
+                .y = GetScreenHeight() / 2 
+            },
+            .vel = {
+                .x = 200,
+                .y = 200
+            },
+            .raio = 15,
+            .cor = WHITE
+        };
+
         // game loop
         while ( !WindowShouldClose() ) {
             update( GetFrameTime() );
@@ -119,7 +175,6 @@
         }
 
         // you should unload game resources here
-
 
         // close audio device only if your game uses sounds
         //CloseAudioDevice();
@@ -131,6 +186,17 @@
 
     void update( float delta ) {
 
+        if ( estado == PARADO ) {
+
+        if ( IsKeyPressed( KEY_ENTER ) ) {
+            estado = RODANDO;
+        }
+
+        } else {
+            atualizarJogador( &jogador, teclaEsquerda, teclaDireita, delta );
+            atualizarBolinha( &bolinha, delta );
+            resolverColisao( &bolinha, &jogador);
+        }
     }
 
     void draw( void ) {
@@ -145,6 +211,8 @@
                 break;
             case JOGANDO:
                 desenharTijolos();
+                desenharJogador( &jogador );
+                desenharBolinha( &bolinha );
                 break;
             case OPCOES:
                 menuOpcoes();
@@ -158,7 +226,6 @@
         EndDrawing();
 
     }
-
 
     void inicializarTijolos(){
         int telaLargura = GetScreenWidth();                // Largura da tela.
@@ -217,6 +284,111 @@
                 }
             }
         }
+    }
+
+    void atualizarJogador( Jogador *jogador, int teclaEsquerda, int teclaDireita, float delta ) {
+
+        //If para levar o jogador a esquerda
+        if ( IsKeyDown( teclaEsquerda ) ) {
+            jogador->pos.x -= jogador->vel * delta;
+        }
+
+        //If para levar o jogador a direita
+        if ( IsKeyDown( teclaDireita ) ) {
+            jogador->pos.x += jogador->vel * delta;
+        }
+
+        //Impede que o jogador ultrapasse  as paredes
+        if ( jogador->pos.x < 0 ) {
+            jogador->pos.x = 0;
+        } else if ( jogador->pos.x + jogador->dim.x > GetScreenWidth() ) {
+            jogador->pos.x = GetScreenWidth() - jogador->dim.x;
+        }
+
+    }
+
+    void desenharJogador( Jogador *jogador ) {
+
+        //Desenha o jogador
+        DrawRectangle(
+            jogador->pos.x,
+            jogador->pos.y,
+            jogador->dim.x,
+            jogador->dim.y,
+            jogador->cor
+        );
+    }
+
+    void atualizarBolinha( Bolinha *bolinha, float delta ) {
+
+        //Movimenta a bolinha
+        bolinha->pos.x += bolinha->vel.x * delta;
+        bolinha->pos.y += bolinha->vel.y * delta;
+
+        if ( bolinha->pos.x + bolinha->raio > GetScreenWidth() ) { //Verifica se houve colisão com a parede da direita
+            bolinha->pos.x = GetScreenWidth() - bolinha->raio;
+            bolinha->vel.x = -bolinha->vel.y;
+        } else if ( bolinha->pos.x - bolinha->raio < 0 ) { //Verifica se houve colisão com a parede da esquerda
+            bolinha->pos.x = bolinha->raio;
+            bolinha->vel.x = -bolinha->vel.y;
+        }
+
+        if ( bolinha->pos.y + bolinha->raio > GetScreenHeight() ) { //Verifica se houve colisão com a parte inferior
+            bolinha->pos.x = GetScreenWidth() / 2;
+            bolinha->pos.y = GetScreenHeight() - 90;
+            bolinha->vel.x = 200;
+            bolinha->vel.y = GetRandomValue( 0, 1 ) == 0 ? 200 : 200;
+            estado = PARADO;
+        } else if ( bolinha->pos.y - bolinha->raio < 0 ) { //Verifica se houve colisão com a parte superior
+            bolinha->pos.y = bolinha->raio;
+            bolinha->vel.y = -bolinha->vel.y;
+        }
+    }
+    
+    void desenharBolinha( Bolinha *bolinha ) {
+
+        //Desenha a bolinha
+        DrawCircle(
+            bolinha->pos.x,
+            bolinha->pos.y,
+            bolinha->raio,
+            bolinha->cor
+        );
+    }
+
+    void resolverColisao( Bolinha *b, Jogador *j) {
+
+        // Checa colisão da bolinha com o jogador
+        bool colisao = CheckCollisionCircleRec(
+            b->pos,
+            b->raio,
+            (Rectangle) {
+                .x = j->pos.x,
+                .y = j->pos.y,
+                .width = j->dim.x,
+                .height = j->dim.y
+            }
+        );
+
+        //Rebate a bolinha quando toca no jogador
+        if ( colisao ) {
+            b->pos.y = j->pos.y - j->dim.y - b->raio;
+            b->vel.y = -b->vel.y;
+        }
+
+        for (int i = 0; i < LINHAS_TIJOLOS; i++) {
+            for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
+                if (tijolos[i][j].ativo) {
+                    // Verifica colisão entre a bolinha e o tijolo
+                    if (CheckCollisionCircleRec(bolinha.pos, bolinha.raio, tijolos[i][j].retan)) {
+                        tijolos[i][j].ativo = false; // "Destrói" o tijolo
+                        bolinha.vel.y *= -1;         // Rebote vertical
+                        break; // Sai do laço para evitar colisão dupla no mesmo frame
+                    }
+                }
+            }
+}
+
     }
 
     void menuPrincipal(){
