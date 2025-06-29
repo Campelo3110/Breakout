@@ -142,7 +142,7 @@
 
         // you must load game resources here
         inicializarTijolos();
-
+        
         jogador = (Jogador) {
             .pos = {
                 .x = GetScreenWidth() / 2 - 75,
@@ -160,7 +160,7 @@
         bolinha = (Bolinha) {
             .pos = {
                 .x = GetScreenWidth() / 2,
-                .y = GetScreenHeight() / 2 
+                .y = GetScreenHeight() - 90
             },
             .vel = {
                 .x = 200,
@@ -190,9 +190,9 @@
 
         if ( estado == PARADO ) {
 
-        if ( IsKeyPressed( KEY_ENTER ) ) {
-            estado = RODANDO;
-        }
+            if ( IsKeyPressed( KEY_ENTER ) ) {
+                estado = RODANDO;
+            }
 
         } else {
             atualizarJogador( &jogador, teclaEsquerda, teclaDireita, delta );
@@ -330,15 +330,15 @@
 
         if ( bolinha->pos.x + bolinha->raio > GetScreenWidth() ) { //Verifica se houve colisão com a parede da direita
             bolinha->pos.x = GetScreenWidth() - bolinha->raio;
-            bolinha->vel.x = -bolinha->vel.y;
+            bolinha->vel.x = -bolinha->vel.x;
         } else if ( bolinha->pos.x - bolinha->raio < 0 ) { //Verifica se houve colisão com a parede da esquerda
             bolinha->pos.x = bolinha->raio;
-            bolinha->vel.x = -bolinha->vel.y;
+            bolinha->vel.x = -bolinha->vel.x;
         }
 
         if ( bolinha->pos.y + bolinha->raio > GetScreenHeight() ) { //Verifica se houve colisão com a parte inferior
             bolinha->pos.x = GetScreenWidth() / 2;
-            bolinha->pos.y = GetScreenHeight() - 90;
+            bolinha->pos.y = GetScreenHeight() / 2;
             bolinha->vel.x = 200;
             bolinha->vel.y = GetRandomValue( 0, 1 ) == 0 ? 200 : 200;
             estado = PARADO;
@@ -431,13 +431,10 @@
 
     void pontosVidas(int pontos){
         const char *pon = TextFormat("%d", pontos);
-        int larg = MeasureText(pon, 40);
 
-        int mLarg = 5;
-        int alt = 30;
         int centro = GetScreenWidth() / 2;
 
-        DrawText(pon, centro, 30, 40, WHITE);
+        DrawText(pon, centro, 10, 40, WHITE);
     }
 
     void menuOpcoes(){
