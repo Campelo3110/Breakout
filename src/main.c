@@ -120,6 +120,8 @@
     void desenharJogador( Jogador *jogador );
     void resolverColisao( Bolinha *b, Jogador *j);
 
+    void pontosVidas(int pontos);
+
     void atualizarBolinha( Bolinha *bolinha, float delta );
     void desenharBolinha( Bolinha *bolinha );
 
@@ -213,6 +215,7 @@
                 desenharTijolos();
                 desenharJogador( &jogador );
                 desenharBolinha( &bolinha );
+                pontosVidas(jogador.pontos);
                 break;
             case OPCOES:
                 menuOpcoes();
@@ -376,13 +379,14 @@
             b->vel.y = -b->vel.y;
         }
 
+        //Verifica a colisao da bola com o tijolo
         for (int i = 0; i < LINHAS_TIJOLOS; i++) {
             for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
                 if (tijolos[i][j].ativo) {
-                    // Verifica colisão entre a bolinha e o tijolo
                     if (CheckCollisionCircleRec(bolinha.pos, bolinha.raio, tijolos[i][j].retan)) {
                         tijolos[i][j].ativo = false; // "Destrói" o tijolo
                         bolinha.vel.y *= -1;         // Rebote vertical
+                        jogador.pontos++;
                         break; // Sai do laço para evitar colisão dupla no mesmo frame
                     }
                 }
@@ -423,6 +427,17 @@
             currentScreen = SAIR;
         }
 
+    }
+
+    void pontosVidas(int pontos){
+        const char *pon = TextFormat("%d", pontos);
+        int larg = MeasureText(pon, 40);
+
+        int mLarg = 5;
+        int alt = 30;
+        int centro = GetScreenWidth() / 2;
+
+        DrawText(pon, centro, 30, 40, WHITE);
     }
 
     void menuOpcoes(){
