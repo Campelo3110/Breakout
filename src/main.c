@@ -125,6 +125,8 @@
     void atualizarBolinha( Bolinha *bolinha, float delta );
     void desenharBolinha( Bolinha *bolinha );
 
+    void sons(int som);
+
     int main( void ) {
 
         // local variables and initial user input
@@ -135,14 +137,14 @@
         InitWindow( resolucoes[resolucaoSelecionada][0], resolucoes[resolucaoSelecionada][0], "Breakout" );
 
         // init audio device only if your game uses sounds
-        //InitAudioDevice();
+        InitAudioDevice();
 
         // FPS: frames per second
         SetTargetFPS( 60 );    
 
         // you must load game resources here
         inicializarTijolos();
-        
+
         jogador = (Jogador) {
             .pos = {
                 .x = GetScreenWidth() / 2 - 75,
@@ -331,20 +333,23 @@
         if ( bolinha->pos.x + bolinha->raio > GetScreenWidth() ) { //Verifica se houve colisão com a parede da direita
             bolinha->pos.x = GetScreenWidth() - bolinha->raio;
             bolinha->vel.x = -bolinha->vel.x;
+            sons(1);
         } else if ( bolinha->pos.x - bolinha->raio < 0 ) { //Verifica se houve colisão com a parede da esquerda
             bolinha->pos.x = bolinha->raio;
             bolinha->vel.x = -bolinha->vel.x;
+            sons(1);
         }
 
         if ( bolinha->pos.y + bolinha->raio > GetScreenHeight() ) { //Verifica se houve colisão com a parte inferior
             bolinha->pos.x = GetScreenWidth() / 2;
-            bolinha->pos.y = GetScreenHeight() / 2;
+            bolinha->pos.y = GetScreenHeight() - 30;
             bolinha->vel.x = 200;
-            bolinha->vel.y = GetRandomValue( 0, 1 ) == 0 ? 200 : 200;
+            bolinha->vel.y = 200;
             estado = PARADO;
         } else if ( bolinha->pos.y - bolinha->raio < 0 ) { //Verifica se houve colisão com a parte superior
             bolinha->pos.y = bolinha->raio;
             bolinha->vel.y = -bolinha->vel.y;
+            sons(1);
         }
     }
     
@@ -377,18 +382,26 @@
         if ( colisao ) {
             b->pos.y = j->pos.y - j->dim.y - b->raio;
             b->vel.y = -b->vel.y;
+            sons(1);
         }
 
+        int contador = 0;
         //Verifica a colisao da bola com o tijolo
         for (int i = 0; i < LINHAS_TIJOLOS; i++) {
             for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
                 if (tijolos[i][j].ativo) {
                     if (CheckCollisionCircleRec(bolinha.pos, bolinha.raio, tijolos[i][j].retan)) {
-                        tijolos[i][j].ativo = false; // "Destrói" o tijolo
-                        bolinha.vel.y *= -1;         // Rebote vertical
-                        jogador.pontos++;
-                        break; // Sai do laço para evitar colisão dupla no mesmo frame
+                        tijolos[i][j].ativo = false;
+                        bolinha.vel.y *= -1;
+                        contador++;
+                        if(contador > 1){
+                            contador *= 2;
+                        }
+                        jogador.pontos = contador;
+                        sons(2);
+                        break;
                     }
+                    contador = 1;
                 }
             }
 }
@@ -435,6 +448,23 @@
         int centro = GetScreenWidth() / 2;
 
         DrawText(pon, centro, 10, 40, WHITE);
+    }
+
+    void sons(int som){
+        Sound batida = LoadSound("resources/sfx/batida.wav");
+        Sound batidaTijolo = LoadSound("resources/sfx/batidaTijolo.wav");
+
+        switch (som)
+        {
+        case 1:
+            PlaySound(batida);
+            break;
+        case 2:
+            PlaySound(batidaTijolo);
+            break;
+        default:
+            break;
+        }
     }
 
     void menuOpcoes(){
