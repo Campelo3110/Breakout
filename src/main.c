@@ -35,6 +35,7 @@
  *------------------------------------------*/
     const int PARADO = 0;
     const int RODANDO = 1;
+
 /*---------------------------------------------
  * Custom types (enums, structs, unions, etc.)
  *-------------------------------------------*/
@@ -103,30 +104,38 @@
     int resolucaoSelecionada = 0;
 
 /*---------------------------------------------
- * Function prototypes. 
+ * Funções sendo inicializadas 
  *-------------------------------------------*/
-
     void update( float delta );
 
     void draw( void );
 
+    //Funções do tijolo
     void inicializarTijolos();
     void desenharTijolos();
 
-    void menuPrincipal();
-    void menuOpcoes();
-
+    //Funções do Jogador
     void atualizarJogador( Jogador *jogador, int teclaEsquerda, int teclaDireita, float delta );
     void desenharJogador( Jogador *jogador );
     void resolverColisao( Bolinha *b, Jogador *j);
 
-    void pontosVidas(int pontos);
-
+    //Funcoes da bolinha
     void atualizarBolinha( Bolinha *bolinha, float delta );
     void desenharBolinha( Bolinha *bolinha );
+    
+    //Função de pontos e vidas
+    void pontosVidas(int pontos);
 
+    //Funções de menus
+    void menuPrincipal();
+    void menuOpcoes();
+
+    //Função de som
     void sons(int som);
 
+/*---------------------------------------------
+ * Funções responsavel pelo controle do jogo
+ *-------------------------------------------*/
     int main( void ) {
 
         // local variables and initial user input
@@ -232,6 +241,9 @@
 
     }
 
+/*---------------------------------------------
+ * Funções do tijolo. 
+ *-------------------------------------------*/
     void inicializarTijolos(){
         int telaLargura = GetScreenWidth();                // Largura da tela.
         int tijoloLargura = telaLargura / COLUNAS_TIJOLOS; // Largura do tijolo.
@@ -291,6 +303,9 @@
         }
     }
 
+/*---------------------------------------------
+ * Funções do Jogador 
+ *-------------------------------------------*/
     void atualizarJogador( Jogador *jogador, int teclaEsquerda, int teclaDireita, float delta ) {
 
         //If para levar o jogador a esquerda
@@ -324,6 +339,48 @@
         );
     }
 
+    void resolverColisao( Bolinha *b, Jogador *j) {
+
+        // Checa colisão da bolinha com o jogador
+        bool colisao = CheckCollisionCircleRec(
+            b->pos,
+            b->raio,
+            (Rectangle) {
+                .x = j->pos.x,
+                .y = j->pos.y,
+                .width = j->dim.x,
+                .height = j->dim.y
+            }
+        );
+
+        //Rebate a bolinha quando toca no jogador
+        if ( colisao ) {
+            b->pos.y = j->pos.y - j->dim.y - b->raio;
+            b->vel.y = -b->vel.y;
+            sons(1);
+        }
+
+        int contador = 0;
+        //Verifica a colisao da bola com o tijolo
+        for (int i = 0; i < LINHAS_TIJOLOS; i++) {
+            for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
+                if (tijolos[i][j].ativo) {
+                    if (CheckCollisionCircleRec(bolinha.pos, bolinha.raio, tijolos[i][j].retan)) {
+                        tijolos[i][j].ativo = false;
+                        bolinha.vel.y *= -1;
+                        jogador.pontos++;
+                        sons(2);
+                        break;
+                    }
+                }
+            }
+        }
+
+    }
+
+/*---------------------------------------------
+ * Funções da bolinha. 
+ *-------------------------------------------*/
     void atualizarBolinha( Bolinha *bolinha, float delta ) {
 
         //Movimenta a bolinha
@@ -363,51 +420,21 @@
             bolinha->cor
         );
     }
+  
+/*---------------------------------------------
+ * Função de pontos e vidas. 
+ *-------------------------------------------*/
+    void pontosVidas(int pontos){
+        const char *pon = TextFormat("%d", pontos);
 
-    void resolverColisao( Bolinha *b, Jogador *j) {
+        int centro = GetScreenWidth() / 2;
 
-        // Checa colisão da bolinha com o jogador
-        bool colisao = CheckCollisionCircleRec(
-            b->pos,
-            b->raio,
-            (Rectangle) {
-                .x = j->pos.x,
-                .y = j->pos.y,
-                .width = j->dim.x,
-                .height = j->dim.y
-            }
-        );
-
-        //Rebate a bolinha quando toca no jogador
-        if ( colisao ) {
-            b->pos.y = j->pos.y - j->dim.y - b->raio;
-            b->vel.y = -b->vel.y;
-            sons(1);
-        }
-
-        int contador = 0;
-        //Verifica a colisao da bola com o tijolo
-        for (int i = 0; i < LINHAS_TIJOLOS; i++) {
-            for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
-                if (tijolos[i][j].ativo) {
-                    if (CheckCollisionCircleRec(bolinha.pos, bolinha.raio, tijolos[i][j].retan)) {
-                        tijolos[i][j].ativo = false;
-                        bolinha.vel.y *= -1;
-                        contador++;
-                        if(contador > 1){
-                            contador *= 2;
-                        }
-                        jogador.pontos = contador;
-                        sons(2);
-                        break;
-                    }
-                    contador = 1;
-                }
-            }
-}
-
+        DrawText(pon, centro, 10, 40, WHITE);
     }
 
+/*---------------------------------------------
+ * Funções de menus. 
+ *-------------------------------------------*/
     void menuPrincipal(){
 
         int larguraTela = GetScreenWidth();
@@ -441,15 +468,21 @@
         }
 
     }
+    
+    void menuOpcoes(){
+        int larguraTela = GetScreenWidth();
+        int alturaTela = GetScreenHeight();
 
-    void pontosVidas(int pontos){
-        const char *pon = TextFormat("%d", pontos);
+        DrawText("Em construcao", larguraTela / 2, alturaTela / 2, 40, WHITE);
+    }    
 
-        int centro = GetScreenWidth() / 2;
+    void menuPausa(){
 
-        DrawText(pon, centro, 10, 40, WHITE);
     }
 
+/*---------------------------------------------
+ * Função do som 
+ *-------------------------------------------*/
     void sons(int som){
         Sound batida = LoadSound("resources/sfx/batida.wav");
         Sound batidaTijolo = LoadSound("resources/sfx/batidaTijolo.wav");
@@ -465,11 +498,4 @@
         default:
             break;
         }
-    }
-
-    void menuOpcoes(){
-        int larguraTela = GetScreenWidth();
-        int alturaTela = GetScreenHeight();
-
-        DrawText("Em construcao", larguraTela / 2, alturaTela / 2, 40, WHITE);
     }
