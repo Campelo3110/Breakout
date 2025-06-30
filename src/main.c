@@ -21,6 +21,12 @@
  * Project headers.
  *-------------------------------------------*/
 
+/*---------------------------------------------
+ * Cores. 
+ *-------------------------------------------*/
+
+#define FUNDO CLITERAL(Color){ 28, 24, 31, 255 }
+#define BLACKTRANS CLITERAL(Color){ 0, 0, 0, 150 }
 
 /*---------------------------------------------
  * Macros. 
@@ -35,6 +41,7 @@
  *------------------------------------------*/
     const int PARADO = 0;
     const int RODANDO = 1;
+    const int PAUSA = 2;
 
 /*---------------------------------------------
  * Custom types (enums, structs, unions, etc.)
@@ -129,6 +136,7 @@
     //Funções de menus
     void menuPrincipal();
     void menuOpcoes();
+    void menuPausa();
 
     //Função de som
     void sons(int som);
@@ -144,6 +152,8 @@
         SetConfigFlags( FLAG_MSAA_4X_HINT );
 
         InitWindow( resolucoes[resolucaoSelecionada][0], resolucoes[resolucaoSelecionada][0], "Breakout" );
+
+        SetExitKey(KEY_NULL);
 
         // init audio device only if your game uses sounds
         InitAudioDevice();
@@ -199,23 +209,34 @@
 
     void update( float delta ) {
 
-        if ( estado == PARADO ) {
+        if ( estado == PARADO || estado == PAUSA) {
 
             if ( IsKeyPressed( KEY_ENTER ) ) {
                 estado = RODANDO;
+            }
+
+            if( estado == PAUSA){
+                menuPausa();
+                if(IsKeyPressed(KEY_ESCAPE)){
+                    estado = RODANDO;
+                }
             }
 
         } else {
             atualizarJogador( &jogador, teclaEsquerda, teclaDireita, delta );
             atualizarBolinha( &bolinha, delta );
             resolverColisao( &bolinha, &jogador);
+
+            if( IsKeyPressed(KEY_ESCAPE) ){
+                estado = PAUSA;
+            }
         }
     }
 
     void draw( void ) {
 
         BeginDrawing();
-        ClearBackground( BLACK );
+        ClearBackground( FUNDO );
 
         //Switch responsavel por mudar as telas
         switch (currentScreen) {
@@ -297,7 +318,7 @@
                         tijolos[i][j].retan.width,  //Largura.
                         tijolos[i][j].retan.height, //Altura.
                         tijolos[i][j].cor //Cor.
-                    ); //Função da RayLib para desenhar um retânglo.
+                    );
                 }
             }
         }
@@ -477,6 +498,29 @@
     }    
 
     void menuPausa(){
+
+        int larg = GetScreenWidth() / 2;
+        int alt = GetScreenHeight() / 2;
+
+        int x = (GetScreenWidth() - larg) / 2;
+        int y = (GetScreenHeight() - alt) / 2;
+
+        int xLabel = (x / 2) + x;
+
+        int espaco = 50;
+        int font = 30;
+
+        DrawRectangle(x, y, larg, alt, BLACK);
+        DrawRectangleLines(x, y, larg, alt, WHITE);
+
+        DrawText("PAUSA", xLabel, y, 50, WHITE);
+
+        GuiSetStyle(DEFAULT, TEXT_SIZE, font);
+
+        if (GuiLabelButton((Rectangle){ xLabel, y + font + espaco, 40, 24 }, "VOLTAR")) {
+            currentScreen = MENU;
+            estado = PARADO;
+        }
 
     }
 
