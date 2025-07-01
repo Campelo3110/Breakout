@@ -86,7 +86,7 @@
  *-------------------------------------------*/
 
     //O jogo começa na tela menu
-    GameScreen currentScreen = PERSONALIZACAO;
+    GameScreen currentScreen = JOGANDO;
 
     //Declaração de um array 2d do tipo Tijolo, que representa uma grade de tijolos.
     Tijolo tijolos[LINHAS_TIJOLOS][COLUNAS_TIJOLOS];
@@ -485,6 +485,7 @@
 
         DrawText(pon, centro, 10, 40, WHITE);
         DrawText(vidass, GetScreenWidth()/2, GetScreenHeight()/2,40,WHITE);
+        DrawCircle(GetScreenWidth()/2, GetScreenHeight()/2, 50, GREEN );
 
         if(bolinha.vidas == 0){
             currentScreen = MENU;
