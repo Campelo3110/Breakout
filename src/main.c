@@ -50,6 +50,7 @@
     //Estrutura para definir o estado do jogo
     typedef enum GameScreen {
         MENU,
+        PERSONALIZACAO,
         JOGANDO,
         OPCOES,
         SAIR
@@ -60,12 +61,14 @@
         Rectangle retan; // Retângulo
         Color cor;       // Cor do tijolo 
         bool ativo;      // Ativo ou quebrado
+        int poder;
     } Tijolo;
 
     typedef struct Bolinha {
         Vector2 pos;
         Vector2 vel;
         float raio;
+        int vidas;
         Color cor;
     } Bolinha;
 
@@ -83,7 +86,7 @@
  *-------------------------------------------*/
 
     //O jogo começa na tela menu
-    GameScreen currentScreen = JOGANDO;
+    GameScreen currentScreen = PERSONALIZACAO;
 
     //Declaração de um array 2d do tipo Tijolo, que representa uma grade de tijolos.
     Tijolo tijolos[LINHAS_TIJOLOS][COLUNAS_TIJOLOS];
@@ -92,8 +95,8 @@
     Bolinha bolinha;
     int estado = PARADO;
 
-    int volumeMusica = 70;
-    int volumeEfeitos = 80;
+    float volumeMusica = 70;
+    float volumeEfeitos = 80;
     bool musicaAtiva = true;
     bool efeitosAtivos = true;
     bool fullscreen = false;
@@ -137,6 +140,8 @@
     void menuPrincipal();
     void menuOpcoes();
     void menuPausa();
+
+    void telaPersonalizacao(Bolinha *bolinha);
 
     //Função de som
     void sons(int som);
@@ -188,6 +193,7 @@
                 .y = 200
             },
             .raio = 15,
+            .vidas = 3,
             .cor = WHITE
         };
 
@@ -243,10 +249,14 @@
             case MENU:
                 menuPrincipal();
                 break;
+            case PERSONALIZACAO:
+                telaPersonalizacao(&bolinha);
+                break;
             case JOGANDO:
                 desenharTijolos();
                 desenharJogador( &jogador );
                 desenharBolinha( &bolinha );
+                
                 pontosVidas(jogador.pontos);
                 break;
             case OPCOES:
@@ -280,6 +290,11 @@
                 tijolos[i][j].retan.height = tijoloAltura - padding;
                 tijolos[i][j].retan.x = j * tijoloLargura + padding / 2;
                 tijolos[i][j].retan.y = i * tijoloAltura + 50 + padding / 2;
+
+                //Definição de poderes
+                int poder = GetRandomValue(0,3);
+                tijolos[i][j].poder = poder;
+                printf("%d", poder);
 
                 //Switch para definir a cor de cada linha de tijolo.
                 switch (i) {
@@ -381,7 +396,6 @@
             sons(1);
         }
 
-        int contador = 0;
         //Verifica a colisao da bola com o tijolo
         for (int i = 0; i < LINHAS_TIJOLOS; i++) {
             for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
@@ -391,6 +405,23 @@
                         bolinha.vel.y *= -1;
                         jogador.pontos++;
                         sons(2);
+
+                        switch (tijolos[i][j].poder)
+                        {
+                        case 1:
+                                printf("1");
+                            break;
+                        case 2:
+                                desenharBolinha(&bolinha);
+                                printf("agora");
+                            break;
+                        case 3:
+                                printf("3");
+                            break;
+                        default:
+                            break;
+                        }
+
                         break;
                     }
                 }
@@ -423,6 +454,7 @@
             bolinha->pos.y = GetScreenHeight() - 30;
             bolinha->vel.x = 200;
             bolinha->vel.y = 200;
+            bolinha->vidas--;
             estado = PARADO;
         } else if ( bolinha->pos.y - bolinha->raio < 0 ) { //Verifica se houve colisão com a parte superior
             bolinha->pos.y = bolinha->raio;
@@ -431,7 +463,7 @@
         }
     }
     
-    void desenharBolinha( Bolinha *bolinha ) {
+    void desenharBolinha( Bolinha *bolinha) {
 
         //Desenha a bolinha
         DrawCircle(
@@ -447,10 +479,16 @@
  *-------------------------------------------*/
     void pontosVidas(int pontos){
         const char *pon = TextFormat("%d", pontos);
+        const char *vidass = TextFormat("%d", bolinha.vidas);
 
         int centro = GetScreenWidth() / 2;
 
         DrawText(pon, centro, 10, 40, WHITE);
+        DrawText(vidass, GetScreenWidth()/2, GetScreenHeight()/2,40,WHITE);
+
+        if(bolinha.vidas == 0){
+            currentScreen = MENU;
+        }
     }
 
 /*---------------------------------------------
@@ -490,12 +528,55 @@
 
     }
     
-    void menuOpcoes(){
+    void menuOpcoes() {
+
         int larguraTela = GetScreenWidth();
         int alturaTela = GetScreenHeight();
+        int espaco = 50;
+        int largura = 500;
+        int altura = 500;
+        int x = larguraTela / 2 - largura / 2;
+        int y = alturaTela / 2 - altura / 2;
+        int xLabel = x + 20;
 
-        DrawText("Em construcao", larguraTela / 2, alturaTela / 2, 40, WHITE);
-    }    
+        DrawRectangle(x, y, largura, altura, BLACKTRANS);
+        DrawRectangleLines(x, y, largura, altura, WHITE);
+        DrawText("OPÇÕES", x + 170, y + 10, 30, WHITE);
+
+        GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
+
+        // Mudar a resolução
+        GuiLabel((Rectangle){ xLabel, y + espaco, 140, 24 }, "Resolução:");
+        static bool dropdownAtivo = false;
+        if (GuiDropdownBox((Rectangle){ xLabel + 150, y + espaco, 200, 24 }, 
+            "800x600;1024x768;1280x720;1920x1080", &resolucaoSelecionada, dropdownAtivo)) {
+            dropdownAtivo = !dropdownAtivo;
+            SetWindowSize(resolucoes[resolucaoSelecionada][0], resolucoes[resolucaoSelecionada][1]);
+        }
+
+        // Mudar a tela cheia
+        GuiLabel((Rectangle){ xLabel, y + espaco * 2, 140, 24 }, "Tela Cheia:");
+        GuiCheckBox((Rectangle){ xLabel + 150, y + espaco * 2, 20, 20 }, "Ativar", &fullscreen);
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) &&
+            CheckCollisionPointRec(GetMousePosition(), (Rectangle){ xLabel + 150, y + espaco * 2, 20, 20 })) {
+            ToggleFullscreen();
+        }
+
+        int teclaPre = 0;
+
+        // VOLUME MÚSICA
+        GuiLabel((Rectangle){ xLabel, y + espaco * 5, 180, 24 }, "Volume Música:");
+        GuiSlider((Rectangle){ xLabel + 150, y + espaco * 5, 200, 20 }, NULL, NULL, &volumeMusica, 0, 100);
+
+        // VOLUME EFEITOS
+        GuiLabel((Rectangle){ xLabel, y + espaco * 6, 180, 24 }, "Volume Efeitos:");
+        GuiSlider((Rectangle){ xLabel + 150, y + espaco * 6, 200, 20 }, NULL, NULL, &volumeEfeitos, 0, 100);
+
+        // BOTÃO VOLTAR
+        if (GuiButton((Rectangle){ x + largura / 2 - 75, y + altura - 40, 150, 30 }, "VOLTAR")) {
+            currentScreen = MENU;
+        }
+    }
 
     void menuPausa(){
 
@@ -522,6 +603,33 @@
             estado = PARADO;
         }
 
+        if (GuiLabelButton((Rectangle){ xLabel, y, 40, 24 }, "OPCOES")) {
+            currentScreen = OPCOES;
+            estado = PARADO;
+        }
+
+    }
+
+    void telaPersonalizacao(Bolinha *bolinha){
+
+        int larguraTela = GetScreenWidth();
+        int alturaTela = GetScreenHeight();
+        int espaco = 50;
+        int largura = 400;
+        int altura = 400;
+        int x = larguraTela / 2 - largura / 2;
+        int y = alturaTela / 2 - altura / 2;
+
+
+        DrawRectangle(x + 150, y, largura, altura, BLACKTRANS);
+        DrawRectangleLines(x + 150, y, largura, altura, WHITE);
+
+        Color cor;
+
+       // GuiColorPicker((Rectangle){ 10, 10, 200, 200 }, NULL,&cor);
+
+        
+        DrawCircle(x, GetScreenHeight()/2, 100, bolinha->cor);
     }
 
 /*---------------------------------------------
