@@ -613,11 +613,7 @@
         int centro = GetScreenWidth() / 2;
 
         DrawText(pon, centro, 10, 40, WHITE);
-<<<<<<< HEAD
-=======
         DrawText(vidass, GetScreenWidth()/2, GetScreenHeight()/2,40,WHITE);
-        DrawCircle(GetScreenWidth()/2, GetScreenHeight()/2, 50, GREEN );
->>>>>>> 64f843e7194372300bf233a7a0a2a576a84fabbc
 
         int raio = 15;
         int espaco = 80;
