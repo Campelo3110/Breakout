@@ -33,9 +33,14 @@
  *-------------------------------------------*/
 
     //Definimos quantas linhas e colunas a grade de tijolo vai ter. 
-    #define LINHAS_TIJOLOS 5
-    #define COLUNAS_TIJOLOS 10
+    #define LINHAS_TIJOLOS 8
+    #define COLUNAS_TIJOLOS 8
 
+    #define MAX_BOLINHAS 5
+
+    #define MAX_PODERES 5
+
+    #define MAX_VIDAS 5
 /*--------------------------------------------
  * Constants. 
  *------------------------------------------*/
@@ -80,19 +85,31 @@
         Color cor;
     } Jogador;
 
+    typedef struct PoderAtivo{
+        Vector2 pos;
+        int tipo;
+        Color cor;
+        bool ativo;
+    } PoderAtivo;
 
 /*---------------------------------------------
  * Global variables.
  *-------------------------------------------*/
 
     //O jogo começa na tela menu
-    GameScreen currentScreen = PERSONALIZACAO;
+    GameScreen currentScreen = JOGANDO;
 
     //Declaração de um array 2d do tipo Tijolo, que representa uma grade de tijolos.
     Tijolo tijolos[LINHAS_TIJOLOS][COLUNAS_TIJOLOS];
 
     Jogador jogador;
-    Bolinha bolinha;
+
+    Bolinha bolinha[MAX_BOLINHAS];
+
+    PoderAtivo poderesAtivos;
+    
+    int numBol = 1;
+
     int estado = PARADO;
 
     float volumeMusica = 70;
@@ -103,6 +120,8 @@
 
     int teclaEsquerda = KEY_A; 
     int teclaDireita = KEY_D; 
+
+    Color corSelecionada;
 
     const int resolucoes[4][2] = {
         {800, 600},
@@ -127,12 +146,17 @@
     //Funções do Jogador
     void atualizarJogador( Jogador *jogador, int teclaEsquerda, int teclaDireita, float delta );
     void desenharJogador( Jogador *jogador );
-    void resolverColisao( Bolinha *b, Jogador *j);
+    void resolverColisao( Bolinha *b, Jogador *j, float delta);
 
     //Funcoes da bolinha
-    void atualizarBolinha( Bolinha *bolinha, float delta );
-    void desenharBolinha( Bolinha *bolinha );
-    
+    bool atualizarBolinha( Bolinha *bolinha, float delta );
+    void desenharBolinha();
+
+    //Funcoes dos poderes
+    void ativarPoder(int tipo, Vector2 pos);
+    void desenharPoderes();
+    void atualizarPoderes(float delta, Jogador *jogador);
+
     //Função de pontos e vidas
     void pontosVidas(int pontos);
 
@@ -152,7 +176,6 @@
     int main( void ) {
 
         // local variables and initial user input
-
         // antialiasing
         SetConfigFlags( FLAG_MSAA_4X_HINT );
 
@@ -183,14 +206,14 @@
             .cor = WHITE
         };
 
-        bolinha = (Bolinha) {
+        bolinha[0] = (Bolinha) {
             .pos = {
                 .x = GetScreenWidth() / 2,
                 .y = GetScreenHeight() - 90
             },
             .vel = {
-                .x = 200,
-                .y = 200
+                .x = 300,
+                .y = 300
             },
             .raio = 15,
             .vidas = 3,
@@ -216,22 +239,46 @@
     void update( float delta ) {
 
         if ( estado == PARADO || estado == PAUSA) {
+            poderesAtivos.ativo = false;
 
             if ( IsKeyPressed( KEY_ENTER ) ) {
                 estado = RODANDO;
+                sons(1);
             }
 
             if( estado == PAUSA){
                 menuPausa();
                 if(IsKeyPressed(KEY_ESCAPE)){
-                    estado = RODANDO;
+                    estado = RODANDO; 
                 }
             }
 
         } else {
+
             atualizarJogador( &jogador, teclaEsquerda, teclaDireita, delta );
-            atualizarBolinha( &bolinha, delta );
-            resolverColisao( &bolinha, &jogador);
+            
+            //Percorre todas as bolinhas
+            for (int i = 0; i < numBol; i++) {
+
+                //Atualiza todas as bolinhas ativa
+                if (atualizarBolinha(&bolinha[i], delta)) {
+                    
+                    //Remove a bolinha do array
+                    for (int j = i; j < numBol - 1; j++) {
+                        bolinha[j] = bolinha[j + 1];
+                    }
+
+                    //Atualiza o índice e o numero de bolinhas
+                    if(numBol != 1){
+                        numBol--;
+                        i--;
+                    }
+                }
+
+                //Verifica colisão da bolinha
+                resolverColisao(&bolinha[i], &jogador, delta);
+                atualizarPoderes(delta, &jogador);
+            }
 
             if( IsKeyPressed(KEY_ESCAPE) ){
                 estado = PAUSA;
@@ -250,14 +297,19 @@
                 menuPrincipal();
                 break;
             case PERSONALIZACAO:
-                telaPersonalizacao(&bolinha);
+                telaPersonalizacao(&bolinha[0]);
                 break;
             case JOGANDO:
                 desenharTijolos();
                 desenharJogador( &jogador );
-                desenharBolinha( &bolinha );
-                
+                desenharPoderes();
+
+                for(int i = 0; i < numBol; i++){
+                    desenharBolinha(&bolinha[i]);
+                }
+
                 pontosVidas(jogador.pontos);
+
                 break;
             case OPCOES:
                 menuOpcoes();
@@ -292,7 +344,7 @@
                 tijolos[i][j].retan.y = i * tijoloAltura + 50 + padding / 2;
 
                 //Definição de poderes
-                int poder = GetRandomValue(0,3);
+                int poder = GetRandomValue(2,2);
                 tijolos[i][j].poder = poder;
                 printf("%d", poder);
 
@@ -308,9 +360,18 @@
                         tijolos[i][j].cor = GREEN;
                         break;
                     case 3:
+                        tijolos[i][j].cor = SKYBLUE;
+                        break;
+                    case 4: 
                         tijolos[i][j].cor = BLUE;
                         break;
-                    default: 
+                    case 5:
+                        tijolos[i][j].cor = DARKBLUE;
+                        break;
+                    case 6:
+                        tijolos[i][j].cor = PINK;
+                        break;
+                    default:
                         tijolos[i][j].cor = VIOLET;
                         break;
                 }
@@ -375,7 +436,7 @@
         );
     }
 
-    void resolverColisao( Bolinha *b, Jogador *j) {
+    void resolverColisao( Bolinha *b, Jogador *j, float delta) {
 
         // Checa colisão da bolinha com o jogador
         bool colisao = CheckCollisionCircleRec(
@@ -393,34 +454,20 @@
         if ( colisao ) {
             b->pos.y = j->pos.y - j->dim.y - b->raio;
             b->vel.y = -b->vel.y;
-            sons(1);
+            sons(3);
         }
 
         //Verifica a colisao da bola com o tijolo
         for (int i = 0; i < LINHAS_TIJOLOS; i++) {
             for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
                 if (tijolos[i][j].ativo) {
-                    if (CheckCollisionCircleRec(bolinha.pos, bolinha.raio, tijolos[i][j].retan)) {
+                    if (CheckCollisionCircleRec(b->pos, b->raio, tijolos[i][j].retan)) {
                         tijolos[i][j].ativo = false;
-                        bolinha.vel.y *= -1;
+                        b->vel.y *= -1;
                         jogador.pontos++;
-                        sons(2);
-
-                        switch (tijolos[i][j].poder)
-                        {
-                        case 1:
-                                printf("1");
-                            break;
-                        case 2:
-                                desenharBolinha(&bolinha);
-                                printf("agora");
-                            break;
-                        case 3:
-                                printf("3");
-                            break;
-                        default:
-                            break;
-                        }
+                        sons(3);
+                        Vector2 poderPos = { tijolos[i][j].retan.x + tijolos[i][j].retan.width / 2, tijolos[i][j].retan.y + tijolos[i][j].retan.height / 2 };
+                        ativarPoder(tijolos[i][j].poder, poderPos);
 
                         break;
                     }
@@ -433,7 +480,7 @@
 /*---------------------------------------------
  * Funções da bolinha. 
  *-------------------------------------------*/
-    void atualizarBolinha( Bolinha *bolinha, float delta ) {
+    bool atualizarBolinha( Bolinha *bolinha, float delta ) {
 
         //Movimenta a bolinha
         bolinha->pos.x += bolinha->vel.x * delta;
@@ -442,29 +489,37 @@
         if ( bolinha->pos.x + bolinha->raio > GetScreenWidth() ) { //Verifica se houve colisão com a parede da direita
             bolinha->pos.x = GetScreenWidth() - bolinha->raio;
             bolinha->vel.x = -bolinha->vel.x;
-            sons(1);
+            sons(3);
         } else if ( bolinha->pos.x - bolinha->raio < 0 ) { //Verifica se houve colisão com a parede da esquerda
             bolinha->pos.x = bolinha->raio;
             bolinha->vel.x = -bolinha->vel.x;
-            sons(1);
+            sons(3);
         }
 
         if ( bolinha->pos.y + bolinha->raio > GetScreenHeight() ) { //Verifica se houve colisão com a parte inferior
+            sons(4);
             bolinha->pos.x = GetScreenWidth() / 2;
-            bolinha->pos.y = GetScreenHeight() - 30;
-            bolinha->vel.x = 200;
-            bolinha->vel.y = 200;
+            bolinha->pos.y = GetScreenHeight() - 90;
+            jogador.pos.x = GetScreenWidth() / 2 - 75;
+            jogador.pos.y = GetScreenHeight() - 75;
+            bolinha->vel.x = 300;
+            bolinha->vel.y = 300;
             bolinha->vidas--;
-            estado = PARADO;
+            if(numBol == 1){
+                estado = PARADO;
+            }
+            return true;
+            
         } else if ( bolinha->pos.y - bolinha->raio < 0 ) { //Verifica se houve colisão com a parte superior
             bolinha->pos.y = bolinha->raio;
             bolinha->vel.y = -bolinha->vel.y;
-            sons(1);
+            sons(3);
         }
+
+        return false;
     }
     
-    void desenharBolinha( Bolinha *bolinha) {
-
+    void desenharBolinha(Bolinha *bolinha) {
         //Desenha a bolinha
         DrawCircle(
             bolinha->pos.x,
@@ -473,20 +528,105 @@
             bolinha->cor
         );
     }
-  
+
+/*---------------------------------------------
+ * Poderes. 
+ *-------------------------------------------*/
+
+    void ativarPoder(int tipo, Vector2 pos){
+        
+        if(!poderesAtivos.ativo){
+            poderesAtivos.ativo = true;
+            poderesAtivos.pos = pos;
+            poderesAtivos.tipo = tipo;
+            switch (tipo)
+            {
+            case 1:
+                poderesAtivos.cor = RED;
+                break;
+            case 2:
+                poderesAtivos.cor = WHITE;
+                break;
+            case 3:
+                poderesAtivos.cor = BLUE;
+                break;
+            default:
+                poderesAtivos.cor = GRAY;
+                break;
+            }
+        }
+        
+    }
+    
+    void atualizarPoderes(float delta, Jogador *jogador) {
+        
+        if (poderesAtivos.ativo) {
+            poderesAtivos.pos.y += 100 * delta;
+            Rectangle poderRec = { poderesAtivos.pos.x - 10, poderesAtivos.pos.y - 10, 20, 20 };
+            Rectangle jogadorRec = { jogador->pos.x, jogador->pos.y, jogador->dim.x, jogador->dim.y };
+            if (CheckCollisionRecs(poderRec, jogadorRec)) {
+                switch (poderesAtivos.tipo) {
+                    case 1:
+                        for(int i = 0; i <= 20000; i++){
+                            jogador->dim.x += 200;
+                        }
+                            jogador->dim.x = 150;
+                        break;
+                    case 2:
+                        if (numBol < MAX_BOLINHAS) {
+                            bolinha[numBol] = bolinha[0];
+                            bolinha[numBol].vel.y *= -1;
+                            bolinha[numBol].pos.x = jogador->pos.x;
+                            bolinha[numBol].pos.y = jogador->pos.y - 90;
+                            numBol++;
+                        }
+                        break;
+                    case 3:
+                        if(bolinha[0].vidas < MAX_VIDAS){
+                            bolinha[0].vidas++;
+                        }
+                        break;
+                }
+                poderesAtivos.ativo = false;
+            }
+            if (poderesAtivos.pos.y > GetScreenHeight()) {
+                poderesAtivos.ativo = false;
+            }
+        }
+    }
+    
+    void desenharPoderes() {
+        
+        if (poderesAtivos.ativo) {
+            DrawRectangle(poderesAtivos.pos.x - 10, poderesAtivos.pos.y - 10, 20, 20, poderesAtivos.cor);
+        }
+        
+    }
+
 /*---------------------------------------------
  * Função de pontos e vidas. 
  *-------------------------------------------*/
     void pontosVidas(int pontos){
         const char *pon = TextFormat("%d", pontos);
-        const char *vidass = TextFormat("%d", bolinha.vidas);
+        const char *vidass = TextFormat("%d", bolinha[0].vidas);
 
         int centro = GetScreenWidth() / 2;
 
         DrawText(pon, centro, 10, 40, WHITE);
-        DrawText(vidass, GetScreenWidth()/2, GetScreenHeight()/2,40,WHITE);
 
-        if(bolinha.vidas == 0){
+        int raio = 15;
+        int espaco = 80;
+
+    
+        for(int i = 0; i < bolinha[0].vidas; i++){
+            DrawCircle(25 + i * espaco / 2, 25, raio, WHITE);
+        }
+        
+        for(int i = 0; i < 5; i++){
+            DrawCircleLines(25 + i * espaco / 2, 25, raio, WHITE);
+        }
+
+        if(bolinha[0].vidas == 0){
             currentScreen = MENU;
         }
     }
@@ -614,38 +754,60 @@
 
         int larguraTela = GetScreenWidth();
         int alturaTela = GetScreenHeight();
-        int espaco = 50;
-        int largura = 400;
-        int altura = 400;
-        int x = larguraTela / 2 - largura / 2;
-        int y = alturaTela / 2 - altura / 2;
 
+        int largPerso = 400;
+        int altPerso = 350;
+        int x = larguraTela / 2 - largPerso / 2 + 150;
+        int y = alturaTela / 2 - altPerso / 2;
 
-        DrawRectangle(x + 150, y, largura, altura, BLACKTRANS);
-        DrawRectangleLines(x + 150, y, largura, altura, WHITE);
+        int botaoLargura = 150;
+        int botaoAltura = 60;
+        int espaco = 30;
 
-        Color cor;
+        DrawRectangle(x, y, largPerso, altPerso, BLACKTRANS);
+        DrawRectangleLines(x, y, largPerso, altPerso, WHITE);
 
-       // GuiColorPicker((Rectangle){ 10, 10, 200, 200 }, NULL,&cor);
+        GuiColorPicker((Rectangle){ x + 20, y + 80, 200, 200 }, NULL, &bolinha->cor);
 
-        
-        DrawCircle(x, GetScreenHeight()/2, 100, bolinha->cor);
+        int rgbX = x + 240;
+        int rgbY = y + 100;
+        int linhaAltura = 25;
+
+        DrawText(TextFormat("R: %d", bolinha->cor.r), rgbX, rgbY, 20, WHITE);
+        DrawText(TextFormat("G: %d", bolinha->cor.g), rgbX, rgbY + linhaAltura, 20, WHITE);
+        DrawText(TextFormat("B: %d", bolinha->cor.b), rgbX, rgbY + linhaAltura * 2, 20, WHITE);
+
+        DrawCircle(x - 150, GetScreenHeight() / 2, 100, bolinha->cor);
+
+        GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
+
+        if (GuiButton((Rectangle){ larguraTela / 2 + 200, alturaTela - 75, botaoLargura, botaoAltura }, "JOGAR")) {
+            currentScreen = JOGANDO;
+        }
     }
 
 /*---------------------------------------------
  * Função do som 
  *-------------------------------------------*/
     void sons(int som){
+        Sound comecando = LoadSound("resources/sfx/comecando.wav");
         Sound batida = LoadSound("resources/sfx/batida.wav");
         Sound batidaTijolo = LoadSound("resources/sfx/batidaTijolo.wav");
+        Sound morte = LoadSound("resources/sfx/morte.wav");
 
         switch (som)
         {
         case 1:
-            PlaySound(batida);
+            PlaySound(comecando);
             break;
         case 2:
+            PlaySound(batida);
+            break;
+        case 3:
             PlaySound(batidaTijolo);
+            break;
+        case 4:
+            PlaySound(morte);
             break;
         default:
             break;
