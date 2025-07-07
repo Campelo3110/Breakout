@@ -33,14 +33,15 @@
  *-------------------------------------------*/
 
     //Definimos quantas linhas e colunas a grade de tijolo vai ter. 
-    #define LINHAS_TIJOLOS 2
-    #define COLUNAS_TIJOLOS 2
+    #define LINHAS_TIJOLOS 8
+    #define COLUNAS_TIJOLOS 8
 
-    #define MAX_BOLINHAS 5
-
-    #define MAX_PODERES 5
-
+    //O máximo de bolinhas que vai ter durante o jogo
+    #define MAX_BOLINHAS 5   
+    
+    //Máximo de vida
     #define MAX_VIDAS 5
+
 /*--------------------------------------------
  * Constants. 
  *------------------------------------------*/
@@ -61,7 +62,7 @@
         SAIR
     } GameScreen;
 
-    //Estrutura para definir oum tijolo
+    //Estrutura para definir um tijolo
     typedef struct  Tijolo{
         Rectangle retan; // Retângulo
         Color cor;       // Cor do tijolo 
@@ -69,6 +70,7 @@
         int poder;
     } Tijolo;
 
+    //Estrutura para definir uma bolinha
     typedef struct Bolinha {
         Vector2 pos;
         Vector2 vel;
@@ -77,6 +79,7 @@
         Color cor;
     } Bolinha;
 
+    //Estrutura para definir um jogador
     typedef struct Jogador {
         Vector2 pos;
         Vector2 dim;
@@ -85,6 +88,7 @@
         Color cor;
     } Jogador;
 
+    //Estrutura para definir os poderes
     typedef struct PoderAtivo{
         Vector2 pos;
         int tipo;
@@ -101,41 +105,30 @@
 
     //Declaração de um array 2d do tipo Tijolo, que representa uma grade de tijolos.
     Tijolo tijolos[LINHAS_TIJOLOS][COLUNAS_TIJOLOS];
+    
+    //Controle quando o jogador passa de fase
     bool faseNova = false;
     bool tijolosDescendo = false;
 
-
-    Jogador jogador;
-
-    Bolinha bolinha[MAX_BOLINHAS];
-
-    PoderAtivo poderesAtivos;
-    
-    int numBol = 1;
-
-    int controla = 0;
-
-    int estado = PARADO;
-
-    float volumeMusica = 70;
-    float volumeEfeitos = 80;
-    bool musicaAtiva = true;
-    bool efeitosAtivos = true;
-    bool fullscreen = false;
-
+    //Teclas que movem o jogaodr
     int teclaEsquerda = KEY_A; 
     int teclaDireita = KEY_D; 
 
+    Jogador jogador;
+    Bolinha bolinha[MAX_BOLINHAS];
+    PoderAtivo poderesAtivos;
+    
+    //Começa com 1 bolinha o jogo
+    int numBol = 1;
+
+    //Variável que vai guarda o máximo de ponto que o jogador conseguir
+    int recorde;
+
+    //Controla o estado do jogo
+    int estado = PARADO;
+
+    //Cor da bolinha
     Color corSelecionada;
-
-    const int resolucoes[4][2] = {
-        {800, 600},
-        {1024, 768},
-        {1280, 720},
-        {1920, 1080}
-    };
-
-    int resolucaoSelecionada = 0;
 
 /*---------------------------------------------
  * Funções sendo inicializadas 
@@ -169,9 +162,10 @@
 
     //Funções de menus
     void menuPrincipal();
-    void menuOpcoes();
     void menuPausa();
+    bool telaMorte();
 
+    //Função da tela de personalização
     void telaPersonalizacao(Bolinha *bolinha);
 
     //Função de som
@@ -186,7 +180,7 @@
         // antialiasing
         SetConfigFlags( FLAG_MSAA_4X_HINT );
 
-        InitWindow( resolucoes[resolucaoSelecionada][0], resolucoes[resolucaoSelecionada][0], "Breakout" );
+        InitWindow( 800, 600, "Breakout" );
 
         SetExitKey(KEY_NULL);
 
@@ -223,7 +217,7 @@
                 .y = 300
             },
             .raio = 15,
-            .vidas = 3,
+            .vidas = 1,
             .cor = WHITE
         };
 
@@ -245,6 +239,7 @@
 
     void update( float delta ) {
 
+        //Verifica se o jogo está PARADO ou PAUSADO
         if ( estado == PARADO || estado == PAUSA) {
             poderesAtivos.ativo = false;
 
@@ -260,8 +255,9 @@
                 }
             }
 
-        } else {
+        } else { //Aqui o jogo está RODANDO
 
+            //Passa para a proxíma fase
             if(todosTijolosDestruidos() && !faseNova){
                 inicializarTijolos();
                 faseNova = true;
@@ -269,7 +265,7 @@
 
                 for (int i = 0; i < LINHAS_TIJOLOS; i++) {
                     for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
-                        tijolos[i][j].retan.y = -100; // fora da tela
+                        tijolos[i][j].retan.y = -100; //Tira os tijolos da tela
                     }
                 }
             }
@@ -333,9 +329,15 @@
 
                 pontosVidas(jogador.pontos);
 
-                break;
-            case OPCOES:
-                menuOpcoes();
+                if(bolinha[0].vidas == 0){
+                    estado = PARADO;
+                    if(telaMorte()){
+                        estado = RODANDO;
+                        jogador.pontos = 0;
+                        bolinha[0].vidas = 1;
+                    }
+                }
+
                 break;
             case SAIR:
                 CloseWindow();
@@ -427,6 +429,7 @@
 
         bool todosPararam = true;
 
+        //Faz os tijolos descerem
         for(int i = 0; i < LINHAS_TIJOLOS; i++){
             for(int j = 0; j < COLUNAS_TIJOLOS; j++){
                 if(tijolos[i][j].ativo){
@@ -437,6 +440,10 @@
                 }
             }
         }
+
+        //Aumenta a velocidade da bolinha
+        bolinha[numBol].vel.y *= 2;
+        bolinha[numBol].vel.x *= 2;
 
         if(todosPararam){
             tijolosDescendo = false;
@@ -456,7 +463,7 @@
         return true;
     }
 
-    /*---------------------------------------------
+/*---------------------------------------------
  * Funções do Jogador 
  *-------------------------------------------*/
     void atualizarJogador( Jogador *jogador, int teclaEsquerda, int teclaDireita, float delta ) {
@@ -556,13 +563,13 @@
             sons(4);
             bolinha->pos.x = GetScreenWidth() / 2;
             bolinha->pos.y = GetScreenHeight() - 90;
-            jogador.pos.x = GetScreenWidth() / 2 - 75;
-            jogador.pos.y = GetScreenHeight() - 75;
             bolinha->vel.x = 300;
             bolinha->vel.y = 300;
             bolinha->vidas--;
             if(numBol == 1){
                 estado = PARADO;
+                jogador.pos.x = GetScreenWidth() / 2 - 75;
+                jogador.pos.y = GetScreenHeight() - 75;
             }
             return true;
             
@@ -633,7 +640,7 @@
                             bolinha[numBol] = bolinha[0];
                             bolinha[numBol].vel.y *= -1;
                             bolinha[numBol].pos.x = jogador->pos.x;
-                            bolinha[numBol].pos.y = jogador->pos.y - 90;
+                            bolinha[numBol].pos.y = jogador->pos.y;
                             numBol++;
                         }
                         break;
@@ -678,12 +685,8 @@
             DrawCircle(25 + i * espaco / 2, 25, raio, WHITE);
         }
         
-        for(int i = 0; i < 5; i++){
+        for(int i = 0; i < MAX_VIDAS; i++){
             DrawCircleLines(25 + i * espaco / 2, 25, raio, WHITE);
-        }
-
-        if(bolinha[0].vidas == 0){
-            currentScreen = MENU;
         }
     }
 
@@ -724,56 +727,6 @@
 
     }
     
-    void menuOpcoes() {
-
-        int larguraTela = GetScreenWidth();
-        int alturaTela = GetScreenHeight();
-        int espaco = 50;
-        int largura = 500;
-        int altura = 500;
-        int x = larguraTela / 2 - largura / 2;
-        int y = alturaTela / 2 - altura / 2;
-        int xLabel = x + 20;
-
-        DrawRectangle(x, y, largura, altura, BLACKTRANS);
-        DrawRectangleLines(x, y, largura, altura, WHITE);
-        DrawText("OPÇÕES", x + 170, y + 10, 30, WHITE);
-
-        GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
-
-        // Mudar a resolução
-        GuiLabel((Rectangle){ xLabel, y + espaco, 140, 24 }, "Resolução:");
-        static bool dropdownAtivo = false;
-        if (GuiDropdownBox((Rectangle){ xLabel + 150, y + espaco, 200, 24 }, 
-            "800x600;1024x768;1280x720;1920x1080", &resolucaoSelecionada, dropdownAtivo)) {
-            dropdownAtivo = !dropdownAtivo;
-            SetWindowSize(resolucoes[resolucaoSelecionada][0], resolucoes[resolucaoSelecionada][1]);
-        }
-
-        // Mudar a tela cheia
-        GuiLabel((Rectangle){ xLabel, y + espaco * 2, 140, 24 }, "Tela Cheia:");
-        GuiCheckBox((Rectangle){ xLabel + 150, y + espaco * 2, 20, 20 }, "Ativar", &fullscreen);
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) &&
-            CheckCollisionPointRec(GetMousePosition(), (Rectangle){ xLabel + 150, y + espaco * 2, 20, 20 })) {
-            ToggleFullscreen();
-        }
-
-        int teclaPre = 0;
-
-        // VOLUME MÚSICA
-        GuiLabel((Rectangle){ xLabel, y + espaco * 5, 180, 24 }, "Volume Música:");
-        GuiSlider((Rectangle){ xLabel + 150, y + espaco * 5, 200, 20 }, NULL, NULL, &volumeMusica, 0, 100);
-
-        // VOLUME EFEITOS
-        GuiLabel((Rectangle){ xLabel, y + espaco * 6, 180, 24 }, "Volume Efeitos:");
-        GuiSlider((Rectangle){ xLabel + 150, y + espaco * 6, 200, 20 }, NULL, NULL, &volumeEfeitos, 0, 100);
-
-        // BOTÃO VOLTAR
-        if (GuiButton((Rectangle){ x + largura / 2 - 75, y + altura - 40, 150, 30 }, "VOLTAR")) {
-            currentScreen = MENU;
-        }
-    }
-
     void menuPausa(){
 
         int larg = GetScreenWidth() / 2;
@@ -803,6 +756,66 @@
             currentScreen = OPCOES;
             estado = PARADO;
         }
+
+    }
+
+    bool telaMorte(){
+
+        int larg = 300;
+        int alt = 200;
+
+        int x = (GetScreenWidth() - larg) / 2;
+        int y = (GetScreenHeight() - alt) / 2;
+
+        int fontTitulo = 30;
+        int fontTexto = 20;
+        int espacoLinha = 10;
+
+        DrawRectangle(x, y, larg, alt, BLACK);
+        DrawRectangleLines(x, y, larg, alt, WHITE);
+
+        const char* titulo = "FIM DE JOGO";
+        int tituloWidth = MeasureText(titulo, fontTitulo);
+        DrawText(titulo, x + (larg - tituloWidth) / 2, y + 15, fontTitulo, WHITE);
+
+        if (jogador.pontos > recorde) {
+            recorde = jogador.pontos;
+        }
+
+        const char* labelPontos = "PONTUAÇÃO";
+        const char* labelRecorde = "ALTA";
+
+        int labelY = y + 70;
+
+        int labelPontosX = x + larg / 4 - MeasureText(labelPontos, fontTexto) / 2;
+        int labelRecordeX = x + 3 * larg / 4 - MeasureText(labelRecorde, fontTexto) / 2;
+
+        DrawText(labelPontos, labelPontosX, labelY, fontTexto, WHITE);
+        DrawText(labelRecorde, labelRecordeX, labelY, fontTexto, WHITE);
+
+        char textoPontos[6];
+        char textoRecorde[6];
+        sprintf(textoPontos, "%05i", jogador.pontos);
+        sprintf(textoRecorde, "%05i", recorde);
+
+        int valorY = labelY + fontTexto + espacoLinha;
+
+        int valorPontosX = x + larg / 4 - MeasureText(textoPontos, fontTexto) / 2;
+        int valorRecordeX = x + 3 * larg / 4 - MeasureText(textoRecorde, fontTexto) / 2;
+
+        DrawText(textoPontos, valorPontosX, valorY, fontTexto, WHITE);
+        DrawText(textoRecorde, valorRecordeX, valorY, fontTexto, WHITE);
+
+        int btnWidth = larg - 70;
+        int btnHeight = 35;
+        int btnX = x + 10;
+        int btnY = y + alt - btnHeight - 10;
+
+        if (GuiLabelButton((Rectangle){ btnX, btnY, btnWidth, btnHeight }, "JOGAR NOVAMENTE")) {
+            return true;
+        }
+
+        return false;
 
     }
 
