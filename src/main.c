@@ -33,8 +33,8 @@
  *-------------------------------------------*/
 
     //Definimos quantas linhas e colunas a grade de tijolo vai ter. 
-    #define LINHAS_TIJOLOS 8
-    #define COLUNAS_TIJOLOS 8
+    #define LINHAS_TIJOLOS 2
+    #define COLUNAS_TIJOLOS 2
 
     #define MAX_BOLINHAS 5
 
@@ -101,6 +101,9 @@
 
     //Declaração de um array 2d do tipo Tijolo, que representa uma grade de tijolos.
     Tijolo tijolos[LINHAS_TIJOLOS][COLUNAS_TIJOLOS];
+    bool faseNova = false;
+    bool tijolosDescendo = false;
+
 
     Jogador jogador;
 
@@ -109,6 +112,8 @@
     PoderAtivo poderesAtivos;
     
     int numBol = 1;
+
+    int controla = 0;
 
     int estado = PARADO;
 
@@ -141,7 +146,9 @@
 
     //Funções do tijolo
     void inicializarTijolos();
-    void desenharTijolos();
+    void desenharTijolos(int fases);
+    void atualizarTijolos(float delta);
+    bool todosTijolosDestruidos();
 
     //Funções do Jogador
     void atualizarJogador( Jogador *jogador, int teclaEsquerda, int teclaDireita, float delta );
@@ -201,7 +208,7 @@
                 .x = 150,
                 .y = 30
             },
-            .vel = 200,
+            .vel = 300,
             .pontos = 0,
             .cor = WHITE
         };
@@ -255,8 +262,24 @@
 
         } else {
 
-            atualizarJogador( &jogador, teclaEsquerda, teclaDireita, delta );
-            
+            if(todosTijolosDestruidos() && !faseNova){
+                inicializarTijolos();
+                faseNova = true;
+                tijolosDescendo = true;
+
+                for (int i = 0; i < LINHAS_TIJOLOS; i++) {
+                    for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
+                        tijolos[i][j].retan.y = -100; // fora da tela
+                    }
+                }
+            }
+
+            if(tijolosDescendo){
+                atualizarTijolos(delta);
+            }
+
+            atualizarJogador(&jogador, teclaEsquerda, teclaDireita, delta);
+
             //Percorre todas as bolinhas
             for (int i = 0; i < numBol; i++) {
 
@@ -300,7 +323,7 @@
                 telaPersonalizacao(&bolinha[0]);
                 break;
             case JOGANDO:
-                desenharTijolos();
+                desenharTijolos(2);
                 desenharJogador( &jogador );
                 desenharPoderes();
 
@@ -382,9 +405,7 @@
         }
     }
 
-    void desenharTijolos(){
-
-        //For utilizado para desenhar os tijolos.
+    void desenharTijolos(int fases){
         for(int i = 0; i < LINHAS_TIJOLOS; i++){
             for(int j = 0; j < COLUNAS_TIJOLOS; j++){
                 if(tijolos[i][j].ativo){
@@ -400,7 +421,42 @@
         }
     }
 
-/*---------------------------------------------
+    void atualizarTijolos(float delta){
+
+        float velocidadeDescida = 250 * delta;
+
+        bool todosPararam = true;
+
+        for(int i = 0; i < LINHAS_TIJOLOS; i++){
+            for(int j = 0; j < COLUNAS_TIJOLOS; j++){
+                if(tijolos[i][j].ativo){
+                    if(tijolos[i][j].retan.y < 50 + i * 30){
+                        tijolos[i][j].retan.y += velocidadeDescida;
+                        todosPararam = false;
+                    }
+                }
+            }
+        }
+
+        if(todosPararam){
+            tijolosDescendo = false;
+            faseNova = false;
+        }
+
+    }
+
+    bool todosTijolosDestruidos() {
+        for (int i = 0; i < LINHAS_TIJOLOS; i++) {
+            for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
+                if (tijolos[i][j].ativo) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /*---------------------------------------------
  * Funções do Jogador 
  *-------------------------------------------*/
     void atualizarJogador( Jogador *jogador, int teclaEsquerda, int teclaDireita, float delta ) {
@@ -468,7 +524,7 @@
                         sons(3);
                         Vector2 poderPos = { tijolos[i][j].retan.x + tijolos[i][j].retan.width / 2, tijolos[i][j].retan.y + tijolos[i][j].retan.height / 2 };
                         ativarPoder(tijolos[i][j].poder, poderPos);
-
+                        
                         break;
                     }
                 }
@@ -613,7 +669,6 @@
         int centro = GetScreenWidth() / 2;
 
         DrawText(pon, centro, 10, 40, WHITE);
-        DrawText(vidass, GetScreenWidth()/2, GetScreenHeight()/2,40,WHITE);
 
         int raio = 15;
         int espaco = 80;
