@@ -6,8 +6,6 @@
 
 > Recriação moderna do clássico jogo **Breakout**, utilizando a linguagem **C** com a biblioteca gráfica **RayLib**. Este projeto foi desenvolvido como parte de um trabalho universitário.
 
-![Logo](resources\images\logo.png)
-
 ---
 
 ## 🧠 Sobre o Projeto
@@ -132,6 +130,7 @@ Veja o arquivo [`LICENSE`](LICENSE) para mais detalhes.
 
 ![Gameplay](https://imgur.com/CsGMuY6.gif)
 ![Gameplay](https://imgur.com/qAnFz6C.gif)
+
 ---
 
 🧾 *Este projeto é parte de um trabalho acadêmico e está em constante evolução. Feedbacks, sugestões e melhorias são bem-vindos!*
