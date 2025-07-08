@@ -33,8 +33,8 @@
  *-------------------------------------------*/
 
     //Definimos quantas linhas e colunas a grade de tijolo vai ter. 
-    #define LINHAS_TIJOLOS 8
-    #define COLUNAS_TIJOLOS 8
+    #define LINHAS_TIJOLOS 6
+    #define COLUNAS_TIJOLOS 6
 
     //O máximo de bolinhas que vai ter durante o jogo
     #define MAX_BOLINHAS 5   
@@ -101,7 +101,7 @@
  *-------------------------------------------*/
 
     //O jogo começa na tela menu
-    GameScreen currentScreen = JOGANDO;
+    GameScreen currentScreen = MENU;
 
     //Declaração de um array 2d do tipo Tijolo, que representa uma grade de tijolos.
     Tijolo tijolos[LINHAS_TIJOLOS][COLUNAS_TIJOLOS];
@@ -109,6 +109,16 @@
     //Controle quando o jogador passa de fase
     bool faseNova = false;
     bool tijolosDescendo = false;
+
+    //Declaração de imagens
+    Texture2D somLigado;
+    Texture2D somDesligado;
+
+    bool morre = true;
+    int tamanhoExtra = 0;
+
+    //Controla se o som está ativo ou desativo
+    bool somAtivado = true;
 
     //Teclas que movem o jogaodr
     int teclaEsquerda = KEY_A; 
@@ -186,6 +196,9 @@
 
         // init audio device only if your game uses sounds
         InitAudioDevice();
+        
+        somLigado = LoadTexture("resources/images/somOn.png");
+        somDesligado = LoadTexture("resources/images/somOff.png");
 
         // FPS: frames per second
         SetTargetFPS( 60 );    
@@ -217,7 +230,7 @@
                 .y = 300
             },
             .raio = 15,
-            .vidas = 1,
+            .vidas = 3,
             .cor = WHITE
         };
 
@@ -230,7 +243,9 @@
         // you should unload game resources here
 
         // close audio device only if your game uses sounds
-        //CloseAudioDevice();
+        UnloadTexture(somLigado);
+        UnloadTexture(somDesligado);
+        CloseAudioDevice();
         CloseWindow();
 
         return 0;
@@ -243,16 +258,13 @@
         if ( estado == PARADO || estado == PAUSA) {
             poderesAtivos.ativo = false;
 
-            if ( IsKeyPressed( KEY_ENTER ) ) {
+            if ( IsKeyPressed( KEY_ENTER ) && currentScreen == JOGANDO ) {
                 estado = RODANDO;
                 sons(1);
             }
-
-            if( estado == PAUSA){
-                menuPausa();
-                if(IsKeyPressed(KEY_ESCAPE)){
-                    estado = RODANDO; 
-                }
+            
+            if( IsKeyPressed(KEY_ESCAPE) ){
+                estado = RODANDO;
             }
 
         } else { //Aqui o jogo está RODANDO
@@ -260,8 +272,10 @@
             //Passa para a proxíma fase
             if(todosTijolosDestruidos() && !faseNova){
                 inicializarTijolos();
+
                 faseNova = true;
                 tijolosDescendo = true;
+                sons(5);
 
                 for (int i = 0; i < LINHAS_TIJOLOS; i++) {
                     for (int j = 0; j < COLUNAS_TIJOLOS; j++) {
@@ -306,7 +320,7 @@
     }
 
     void draw( void ) {
-
+        
         BeginDrawing();
         ClearBackground( FUNDO );
 
@@ -332,10 +346,24 @@
                 if(bolinha[0].vidas == 0){
                     estado = PARADO;
                     if(telaMorte()){
+                        inicializarTijolos();
                         estado = RODANDO;
                         jogador.pontos = 0;
-                        bolinha[0].vidas = 1;
-                    }
+                        bolinha[0].vidas = 3;
+                    }   
+                }
+                
+                if (estado == PAUSA) {
+                    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.6f));
+                    menuPausa();
+                }
+
+                Rectangle botaoSom = { GetScreenWidth() - 30, 15, 50, 50 };
+
+                DrawTexture(somAtivado ? somLigado : somDesligado, botaoSom.x, botaoSom.y, WHITE);
+
+                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(GetMousePosition(), botaoSom)) {
+                    somAtivado = !somAtivado;
                 }
 
                 break;
@@ -343,7 +371,6 @@
                 CloseWindow();
                 break;
         }
-
 
         EndDrawing();
 
@@ -369,9 +396,8 @@
                 tijolos[i][j].retan.y = i * tijoloAltura + 50 + padding / 2;
 
                 //Definição de poderes
-                int poder = GetRandomValue(2,2);
+                int poder = GetRandomValue(1,3);
                 tijolos[i][j].poder = poder;
-                printf("%d", poder);
 
                 //Switch para definir a cor de cada linha de tijolo.
                 switch (i) {
@@ -429,6 +455,9 @@
 
         bool todosPararam = true;
 
+        
+        bolinha->vel.y += 2;
+
         //Faz os tijolos descerem
         for(int i = 0; i < LINHAS_TIJOLOS; i++){
             for(int j = 0; j < COLUNAS_TIJOLOS; j++){
@@ -440,10 +469,6 @@
                 }
             }
         }
-
-        //Aumenta a velocidade da bolinha
-        bolinha[numBol].vel.y *= 2;
-        bolinha[numBol].vel.x *= 2;
 
         if(todosPararam){
             tijolosDescendo = false;
@@ -548,7 +573,7 @@
         //Movimenta a bolinha
         bolinha->pos.x += bolinha->vel.x * delta;
         bolinha->pos.y += bolinha->vel.y * delta;
-
+        
         if ( bolinha->pos.x + bolinha->raio > GetScreenWidth() ) { //Verifica se houve colisão com a parede da direita
             bolinha->pos.x = GetScreenWidth() - bolinha->raio;
             bolinha->vel.x = -bolinha->vel.x;
@@ -560,18 +585,24 @@
         }
 
         if ( bolinha->pos.y + bolinha->raio > GetScreenHeight() ) { //Verifica se houve colisão com a parte inferior
-            sons(4);
-            bolinha->pos.x = GetScreenWidth() / 2;
-            bolinha->pos.y = GetScreenHeight() - 90;
-            bolinha->vel.x = 300;
-            bolinha->vel.y = 300;
-            bolinha->vidas--;
-            if(numBol == 1){
-                estado = PARADO;
-                jogador.pos.x = GetScreenWidth() / 2 - 75;
-                jogador.pos.y = GetScreenHeight() - 75;
+            if(morre){
+                sons(4);
+                bolinha->pos.x = GetScreenWidth() / 2;
+                bolinha->pos.y = GetScreenHeight() - 90;
+                bolinha->vel.x = 300;
+                bolinha->vel.y = 300;
+                bolinha->vidas--;
+                if(numBol == 1){
+                    estado = PARADO;
+                    jogador.pos.x = GetScreenWidth() / 2 - 75;
+                    jogador.pos.y = GetScreenHeight() - 75;
+                }
+                return true;
+            }else{
+                bolinha->pos.y = bolinha->raio;
+                bolinha->vel.y = bolinha->vel.y;
+                sons(3);   
             }
-            return true;
             
         } else if ( bolinha->pos.y - bolinha->raio < 0 ) { //Verifica se houve colisão com a parte superior
             bolinha->pos.y = bolinha->raio;
@@ -627,13 +658,17 @@
             poderesAtivos.pos.y += 100 * delta;
             Rectangle poderRec = { poderesAtivos.pos.x - 10, poderesAtivos.pos.y - 10, 20, 20 };
             Rectangle jogadorRec = { jogador->pos.x, jogador->pos.y, jogador->dim.x, jogador->dim.y };
+
             if (CheckCollisionRecs(poderRec, jogadorRec)) {
                 switch (poderesAtivos.tipo) {
                     case 1:
-                        for(int i = 0; i <= 20000; i++){
-                            jogador->dim.x += 200;
-                        }
-                            jogador->dim.x = 150;
+                            if(tamanhoExtra == 0){
+                                jogador->dim.x += 100;
+                                tamanhoExtra = 100;
+                            }else{
+                                tamanhoExtra = 0;
+                                jogador->dim.x -= 100; 
+                            }
                         break;
                     case 2:
                         if (numBol < MAX_BOLINHAS) {
@@ -703,25 +738,50 @@
 
         int x = larguraTela / 2 - botaoLargura / 2;
         int y = alturaTela / 2;
-        int espaco = 20;
+        int espaco = 25;
 
         const char* titulo = "BREAKOUT";
         int fonteTitulo = 70;
         int tituloX = larguraTela / 2 - MeasureText(titulo, fonteTitulo) / 2;
         int tituloY = y - 160 - espaco;
 
-        DrawText(titulo, tituloX + 3, tituloY + 3, fonteTitulo, GRAY);
-        DrawText(titulo, tituloX, tituloY, fonteTitulo, RAYWHITE);
+        ClearBackground(FUNDO);
 
-        if (GuiButton((Rectangle){ x, y - botaoAltura - espaco, botaoLargura, botaoAltura }, "JOGAR")) {
+        DrawText(titulo, tituloX + 2, tituloY + 2, fonteTitulo, BLACK);
+        DrawText(titulo, tituloX, tituloY, fonteTitulo, WHITE);
+
+        Color corBotao = BLACK;
+        Color corTexto = WHITE;
+        Color corBorda = WHITE;
+
+        DrawRectangle(x, y - botaoAltura - espaco, botaoLargura, botaoAltura , corBotao);
+        DrawRectangleLines(x, y - botaoAltura - espaco, botaoLargura, botaoAltura, corBorda);
+        DrawText("JOGAR", x + 90, y - botaoAltura - espaco + 15, 30, corTexto);
+
+        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){x, y - botaoAltura - espaco, botaoLargura, botaoAltura}) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             currentScreen = JOGANDO;
+            inicializarTijolos();
+            jogador.pontos = 0;
+            bolinha[0].vidas = 3;
+            jogador.pos.x = GetScreenWidth() / 2 - 75;
+            jogador.pos.y = GetScreenHeight() - 75;
+            bolinha[0].pos.x = GetScreenWidth() / 2;
+            bolinha[0].pos.y = GetScreenHeight() - 90;
         }
 
-        if (GuiButton((Rectangle){ x, y, botaoLargura, botaoAltura }, "OPÇÕES")) {
-            currentScreen = OPCOES;
+        DrawRectangle(x, y, botaoLargura, botaoAltura, corBotao);
+        DrawRectangleLines(x, y, botaoLargura, botaoAltura, corBorda);
+        DrawText("PERSONALIZAR", x + 45, y + 15, 30, corTexto);
+
+        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){x, y, botaoLargura, botaoAltura}) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            currentScreen = PERSONALIZACAO;
         }
 
-        if (GuiButton((Rectangle){ x, y + botaoAltura + espaco, botaoLargura, botaoAltura }, "SAIR")) {
+        DrawRectangle(x, y + botaoAltura + espaco, botaoLargura, botaoAltura, corBotao);
+        DrawRectangleLines(x, y + botaoAltura + espaco, botaoLargura, botaoAltura, corBorda);
+        DrawText("SAIR", x + 110, y + botaoAltura + espaco + 15, 30, corTexto);
+
+        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){x, y + botaoAltura + espaco, botaoLargura, botaoAltura}) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             currentScreen = SAIR;
         }
 
@@ -729,34 +789,39 @@
     
     void menuPausa(){
 
-        int larg = GetScreenWidth() / 2;
-        int alt = GetScreenHeight() / 2;
+        int larg = 400;
+        int alt = 250;
 
         int x = (GetScreenWidth() - larg) / 2;
         int y = (GetScreenHeight() - alt) / 2;
 
-        int xLabel = (x / 2) + x;
-
-        int espaco = 50;
-        int font = 30;
+        int espaco = 20;
+        int fonte = 30;
 
         DrawRectangle(x, y, larg, alt, BLACK);
-        DrawRectangleLines(x, y, larg, alt, WHITE);
+        DrawRectangleLines(x,y,larg,alt, RAYWHITE);
 
-        DrawText("PAUSA", xLabel, y, 50, WHITE);
+        const char* titulo = "PAUSA";
+        int tituloWidth = MeasureText(titulo, 50);
+        DrawText(titulo, x + (larg - tituloWidth) / 2, y + 20, 50, RAYWHITE);
 
-        GuiSetStyle(DEFAULT, TEXT_SIZE, font);
 
-        if (GuiLabelButton((Rectangle){ xLabel, y + font + espaco, 40, 24 }, "VOLTAR")) {
+        DrawRectangle(x + larg / 2 - 140, y + 100, 140, 50, BLACK);
+        DrawRectangleLines(x + larg / 2 - 140, y + 100, 140, 50, WHITE);
+        DrawText("VOLTAR", x + larg / 2 - 135, y + 110, 30, WHITE);
+
+        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){x + larg / 2 - 140, y + 100, 140, 50}) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            estado = RODANDO;
+        }
+
+        DrawRectangle(x + larg / 2 + 20, y + 100, 140, 50, BLACK);
+        DrawRectangleLines(x + larg / 2 + 20, y + 100, 140, 50, WHITE);
+        DrawText("MENU", x + larg / 2 + 50, y + 110, 30, WHITE);
+
+        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){x + larg / 2 + 20, y + 100, 140, 50}) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             currentScreen = MENU;
             estado = PARADO;
         }
-
-        if (GuiLabelButton((Rectangle){ xLabel, y, 40, 24 }, "OPCOES")) {
-            currentScreen = OPCOES;
-            estado = PARADO;
-        }
-
     }
 
     bool telaMorte(){
@@ -783,7 +848,7 @@
         }
 
         const char* labelPontos = "PONTUAÇÃO";
-        const char* labelRecorde = "ALTA";
+        const char* labelRecorde = "RECORDE";
 
         int labelY = y + 70;
 
@@ -793,10 +858,8 @@
         DrawText(labelPontos, labelPontosX, labelY, fontTexto, WHITE);
         DrawText(labelRecorde, labelRecordeX, labelY, fontTexto, WHITE);
 
-        char textoPontos[6];
-        char textoRecorde[6];
-        sprintf(textoPontos, "%05i", jogador.pontos);
-        sprintf(textoRecorde, "%05i", recorde);
+        const char* textoPontos = TextFormat("%05i", jogador.pontos);
+        const char* textoRecorde = TextFormat("%05i", recorde);
 
         int valorY = labelY + fontTexto + espacoLinha;
 
@@ -806,51 +869,67 @@
         DrawText(textoPontos, valorPontosX, valorY, fontTexto, WHITE);
         DrawText(textoRecorde, valorRecordeX, valorY, fontTexto, WHITE);
 
-        int btnWidth = larg - 70;
-        int btnHeight = 35;
-        int btnX = x + 10;
-        int btnY = y + alt - btnHeight - 10;
+        DrawText(textoPontos, valorPontosX, valorY, fontTexto, WHITE);
+        DrawText(textoRecorde, valorRecordeX, valorY, fontTexto, WHITE);
 
-        if (GuiLabelButton((Rectangle){ btnX, btnY, btnWidth, btnHeight }, "JOGAR NOVAMENTE")) {
+        int botaoLargura = 230;
+        int botaoAltura = 40;
+        int botaoX = x + (larg - botaoLargura) / 2;
+        int botaoY = y + alt - botaoAltura - 20;
+
+        DrawRectangle(botaoX, botaoY, botaoLargura, botaoAltura, BLACK);
+        DrawRectangleLines(botaoX, botaoY, botaoLargura, botaoAltura, WHITE);
+
+        const char* textoBotao = "JOGAR NOVAMENTE";
+        int textoBotaoWidth = MeasureText(textoBotao, 20);
+        DrawText(textoBotao, botaoX + (botaoLargura - textoBotaoWidth) / 2, botaoY + 10, 20, WHITE);
+
+        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){botaoX, botaoY, botaoLargura, botaoAltura}) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             return true;
         }
-
+        
         return false;
-
-    }
+        }
 
     void telaPersonalizacao(Bolinha *bolinha){
 
         int larguraTela = GetScreenWidth();
         int alturaTela = GetScreenHeight();
 
-        int largPerso = 400;
-        int altPerso = 350;
-        int x = larguraTela / 2 - largPerso / 2 + 150;
-        int y = alturaTela / 2 - altPerso / 2;
+        int painelLargura = 500;
+        int painelAltura = 400;
+        int painelX = larguraTela / 2 - painelLargura / 2;
+        int painelY = alturaTela / 2 - painelAltura / 2;
 
-        int botaoLargura = 150;
+        DrawRectangle(painelX, painelY, painelLargura, painelAltura, BLACKTRANS);
+        DrawRectangleLines(painelX, painelY, painelLargura, painelAltura, WHITE);
+
+        const char* titulo = "PERSONALIZAR";
+        int fonteTitulo = 40;
+        int tituloX = painelX + painelLargura / 2 - MeasureText(titulo, fonteTitulo) / 2;
+        int tituloY = painelY + 15;
+        DrawText(titulo, tituloX + 2, tituloY + 2, fonteTitulo, BLACK);
+        DrawText(titulo, tituloX, tituloY, fonteTitulo, WHITE);
+
+        Rectangle pickerArea = { painelX + 30, painelY + 80, 200, 200 };
+        GuiColorPicker(pickerArea, NULL, &bolinha->cor);
+
+        int previewX = painelX + painelLargura - 150;
+        int previewY = painelY + 150;
+        DrawCircle(previewX, previewY, 40, bolinha->cor);
+        DrawCircleLines(previewX, previewY, 40, WHITE);
+     
+        int botaoLargura = 200;
         int botaoAltura = 60;
-        int espaco = 30;
+        int botaoX = painelX + painelLargura / 2 - botaoLargura / 2;
+        int botaoY = painelY + painelAltura - botaoAltura - 20;
 
-        DrawRectangle(x, y, largPerso, altPerso, BLACKTRANS);
-        DrawRectangleLines(x, y, largPerso, altPerso, WHITE);
+        DrawRectangle(botaoX, botaoY, botaoLargura, botaoAltura, BLACK);
+        DrawRectangleLines(botaoX, botaoY, botaoLargura, botaoAltura, WHITE);
+        DrawText("JOGAR", botaoX + 60, botaoY + 15, 30, WHITE);
 
-        GuiColorPicker((Rectangle){ x + 20, y + 80, 200, 200 }, NULL, &bolinha->cor);
-
-        int rgbX = x + 240;
-        int rgbY = y + 100;
-        int linhaAltura = 25;
-
-        DrawText(TextFormat("R: %d", bolinha->cor.r), rgbX, rgbY, 20, WHITE);
-        DrawText(TextFormat("G: %d", bolinha->cor.g), rgbX, rgbY + linhaAltura, 20, WHITE);
-        DrawText(TextFormat("B: %d", bolinha->cor.b), rgbX, rgbY + linhaAltura * 2, 20, WHITE);
-
-        DrawCircle(x - 150, GetScreenHeight() / 2, 100, bolinha->cor);
-
-        GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
-
-        if (GuiButton((Rectangle){ larguraTela / 2 + 200, alturaTela - 75, botaoLargura, botaoAltura }, "JOGAR")) {
+        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){ botaoX, botaoY, botaoLargura, botaoAltura }) &&
+            IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             currentScreen = JOGANDO;
         }
     }
@@ -863,22 +942,28 @@
         Sound batida = LoadSound("resources/sfx/batida.wav");
         Sound batidaTijolo = LoadSound("resources/sfx/batidaTijolo.wav");
         Sound morte = LoadSound("resources/sfx/morte.wav");
+        Sound proximaFase = LoadSound("resources/sfx/proximaFase.wav");
 
-        switch (som)
-        {
-        case 1:
-            PlaySound(comecando);
-            break;
-        case 2:
-            PlaySound(batida);
-            break;
-        case 3:
-            PlaySound(batidaTijolo);
-            break;
-        case 4:
-            PlaySound(morte);
-            break;
-        default:
-            break;
+        if(somAtivado){
+            switch (som)
+            {
+            case 1:
+                PlaySound(comecando);
+                break;
+            case 2:
+                PlaySound(batida);
+                break;
+            case 3:
+                PlaySound(batidaTijolo);
+                break;
+            case 4:
+                PlaySound(morte);
+                break;
+            case 5:
+                PlaySound(proximaFase);
+                break;
+            default:
+                break;
+            }
         }
     }
