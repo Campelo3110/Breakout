@@ -6,6 +6,8 @@
 
 > Recriação moderna do clássico jogo **Breakout**, utilizando a linguagem **C** com a biblioteca gráfica **RayLib**. Este projeto foi desenvolvido como parte de um trabalho universitário.
 
+![Logo](resources\images\logo.png)
+
 ---
 
 ## 🧠 Sobre o Projeto
@@ -53,14 +55,12 @@ O **Breakout** é um jogo de arcade dos anos 70 onde o jogador controla uma barr
 
 ```bash
 .\build.sh
-./breakout
 ```
 
 ### 🪟 Windows (MinGW)
 
 ```bash
 .\build.bat
-./breakout.exe
 ```
 
 > Certifique-se de que as DLLs da RayLib estejam no mesmo diretório do `.exe`.
@@ -80,7 +80,11 @@ O **Breakout** é um jogo de arcade dos anos 70 onde o jogador controla uma barr
 │       ├── comecando.wav
 │       ├── morte.wav
 │       └── proximaFase.wav
-├── main.c
+├── 📁 src/
+│   └──  main.c
+├── build.bat
+├── build.sh
+├── build.ps1
 └── README.md
 
 ---
@@ -126,8 +130,8 @@ Veja o arquivo [`LICENSE`](LICENSE) para mais detalhes.
 
 ## 📸 Preview
 
-![Gameplay](https://imgur.com/CsGMuY6)
-![Gameplay](https://imgur.com/qAnFz6C)
+![Gameplay](https://imgur.com/CsGMuY6.gif)
+![Gameplay](https://imgur.com/qAnFz6C.gif)
 ---
 
 🧾 *Este projeto é parte de um trabalho acadêmico e está em constante evolução. Feedbacks, sugestões e melhorias são bem-vindos!*
